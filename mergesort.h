@@ -32,6 +32,15 @@ typedef struct _file_handler_args{
 
 }file_handler_args;
 
+typedef struct _dir_handler_args{
+
+    char *input_directory;
+    char *output_directory;
+    char *column;
+    file_handler_args * args;
+
+}dir_handler_args;
+
 typedef struct _holder{
 
     char *pathname;

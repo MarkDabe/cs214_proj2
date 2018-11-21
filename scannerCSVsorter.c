@@ -18,13 +18,14 @@ int COUNTER = 0;
 
 
 
-int merge_numeric = 1;
+int merge_numeric = -1;
 
 
 // sorting function that calls merging_int or merging_string depending on data type
 void sort(entry** entries, entry** internal_buffer,int sorting_index ,int low, int high) {
 
     int mid;
+
 
     if (low < high) {
         mid = (low + high) / 2;
@@ -37,6 +38,7 @@ void sort(entry** entries, entry** internal_buffer,int sorting_index ,int low, i
             merging_string(entries, internal_buffer, sorting_index, low, mid, high);
         }
     } else {
+
         return;
     }
 }
@@ -215,14 +217,18 @@ entry** load_array(int* entries_count, int* fields_count, char* filename){
 void * file_handler(void * args){
 
 
+//    printf("Initial PID: %d\n", getpid());
+//
+//    printf("TIDS of all threads: \n");
+//
+//    printf("Total number of threads: 0\n");
+
+
+
     holder *instance_args = args;
 
     char* pathname =  instance_args->pathname;
     file_handler_args *file_args = instance_args->args;
-
-    int sorting_index = -1;
-
-
 
 
 // call the function that builds the array
@@ -280,12 +286,6 @@ void * file_handler(void * args){
 
 
 //// determine if column to be sorted exists in fields
-//    for(i = 0; i < fields_count; i++){
-//        if(strcmp(entries[0]->fields[i], column) == 0){
-//            sorting_index = i;
-//            break;
-//        }
-//    }
 //
 //
 //
@@ -317,19 +317,6 @@ void * file_handler(void * args){
 //            }
 //        }
 //    }
-
-//    i = 0;
-
-
-// load the internal buffer needed by mergesort
-//    entry** internal_buffer = (entry**) malloc(sizeof(entry*) * entries_count);
-//
-//    while(i < entries_count){
-//
-//        internal_buffer[i] = (entry*) malloc(sizeof(entry));
-//        i++;
-//    }
-//
 
 // call sort on the array
 //    sort(entries, internal_buffer, sorting_index, 1, entries_count - 2);
@@ -392,14 +379,21 @@ void * file_handler(void * args){
 //
 //    free(pathname);
 
-    NAME_NOT_FOUND:   pthread_exit(NULL);
+  pthread_exit(NULL);
 
 
 }
 
 
 
-char* recursive(const char* input_directory, const char* column, const char* output_directory, file_handler_args * args){
+void* recursive(void * dir_args){
+
+    dir_handler_args * instance_dir_args = (dir_handler_args *) dir_args;
+
+    const char* input_directory = instance_dir_args ->input_directory;
+    const char* column = instance_dir_args->column;
+    const char* output_directory = instance_dir_args->output_directory;
+    file_handler_args * args = instance_dir_args->args;
 
     DIR *dp;
     DIR *dp2;
@@ -425,9 +419,18 @@ char* recursive(const char* input_directory, const char* column, const char* out
 
                 closedir(dp2);
 
+                char* temp_pathname = (char*) malloc(sizeof(char) * strlen(pathname) + 1);
+
+                strncpy(temp_pathname, pathname, strlen(pathname) +1);
+
+                instance_dir_args ->input_directory = temp_pathname;
 
 
-                recursive(pathname, column, output_directory, args);
+                pthread_create(&TIDS[COUNTER],NULL, recursive, dir_args);
+
+                COUNTER++;
+
+//                recursive(pathname, column, output_directory, args);
 
 
             }else{
@@ -575,9 +578,18 @@ int main(int argc, char* argv[]) {
 
     args->global_buffer = global_buffer;
 
-    char* state = recursive(input_directory, argv[2], output_directory, args);
+    dir_handler_args * dir_args =  (dir_handler_args *) malloc(sizeof(dir_handler_args));
 
 
+    dir_args->args = args;
+    dir_args->input_directory = input_directory;
+    dir_args->output_directory = output_directory;
+    dir_args->column = argv[2];
+
+
+    pthread_create(&TIDS[COUNTER],NULL, recursive, dir_args);
+
+    COUNTER++;
 
     i = 0;
 
@@ -593,15 +605,51 @@ int main(int argc, char* argv[]) {
     }
 
 
-
-    //
-
-    //sorter
-
-    //
+    int sorting_index = 1;
 
 
-    FILE * output = fopen("/Users/markhabashy/CLionProjects/untitled1/test/AllFiles-sorted-<fieldname>.csv", "w");
+    char* string_array[13] = {"color", "director_name", "duration", "actor_2_name", "genres", "actor_1_name", "movie_title",
+                            "actor_3_name", "plot_keywords", "movie_imdb_link", "language", "country", "content_rating"};
+
+    char* numeric_array[15] = {"num_critic_for_reviews", "director_facebook_likes", "actor_3_facebook_likes", " actor_1_facebook_likes",
+    "gross", "num_voted_users", "cast_total_facebook_likes", "facenumber_in_poster", "num_user_for_reviews", "budget", "title_year",
+    "actor_2_facebook_likes", "imdb_score", "aspect_ratio", "movie_facebook_likes"};
+
+
+    for(i = 0; i < 13; i++){
+        if(strcmp(string_array[i], argv[2]) == 0){
+            merge_numeric = 0;
+            break;
+            }
+    }
+
+    if(merge_numeric == -1) {
+        for (i = 0; i < 15; i++) {
+            if (strcmp(numeric_array[i], argv[2]) == 0) {
+                sorting_index = i;
+                break;
+            }
+        }
+    }
+
+
+
+//  load the internal buffer needed by mergesort
+    entry** internal_buffer = (entry**) malloc(sizeof(entry*) * args->global_buffer[0]->array_length);
+
+    i = 0;
+
+    while(i < args->global_buffer[0]->array_length){
+
+        internal_buffer[i] = (entry*) malloc(sizeof(entry));
+        i++;
+    }
+
+
+// call sort on the array
+    sort(args->global_buffer, internal_buffer, sorting_index, 1, args->global_buffer[0]->array_length -1);
+
+    FILE * output = fopen("/Users/markhabashy/CLionProjects/untitled1/test/AllFiles-sorted.csv", "w");
 
     for(i = 0; i < args->global_buffer[0]->array_length; i++) {
 
@@ -630,7 +678,7 @@ int main(int argc, char* argv[]) {
     pthread_mutex_destroy(&lock);
 
 
-    if(strcmp(state, "parent") == 0) {
+//    if(strcmp(state, "parent") == 0) {
 
         i = 0;
 
@@ -655,7 +703,7 @@ int main(int argc, char* argv[]) {
         printf("Total number of threads: %d\n", COUNTER);
 
 
-    }
+//    }
 
     return 0;
 }
