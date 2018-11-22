@@ -197,11 +197,7 @@ entry** load_array(int* entries_count, int* fields_count, char* filename){
 
         }
 
-
-
         i++;
-
-
     }
 
 
@@ -235,6 +231,7 @@ void * file_handler(void * args){
     int entries_count = -1;
     int fields_count = -1;
 
+
     entry** entries = load_array(&entries_count, &fields_count, pathname);
 
     if(entries == NULL){
@@ -245,13 +242,16 @@ void * file_handler(void * args){
     pthread_mutex_lock(&lock);
 
 
+    printf("entries count: %d\n", entries_count);
+
+
     entry ** global_buffer = file_args->global_buffer;
 
     int array_length = global_buffer[0]->array_length;
 
     printf("%d\n", array_length);
 
-    entry ** temp_global_buffer = (entry **) realloc(global_buffer, (size_t) (array_length + entries_count - 2) * sizeof(entry));
+    entry ** temp_global_buffer = (entry **) realloc(global_buffer, (size_t) (array_length + entries_count - 1) * sizeof(entry));
 
 
     if(temp_global_buffer == NULL){
@@ -262,14 +262,14 @@ void * file_handler(void * args){
 
     }
 
-    temp_global_buffer[0]->array_length = temp_global_buffer[0]->array_length + entries_count - 2;
+    temp_global_buffer[0]->array_length = temp_global_buffer[0]->array_length + entries_count - 1;
 
     file_args -> global_buffer = temp_global_buffer;
 
     int loop_counter;
 
 
-    for(loop_counter = 0; loop_counter < entries_count - 2; loop_counter++) {
+    for(loop_counter = 0; loop_counter < entries_count - 1; loop_counter++) {
 
         temp_global_buffer[array_length + loop_counter] = malloc(sizeof(entry));
 
@@ -281,6 +281,16 @@ void * file_handler(void * args){
 
     pthread_mutex_unlock(&lock);
 
+
+    int i;
+
+    for(i = 0; i < entries_count - 2; i++){
+
+        free(entries[i]);
+
+    }
+
+    free(entries);
 
 
 
@@ -377,7 +387,8 @@ void * file_handler(void * args){
 //
 //    free(instance_args);
 //
-//    free(pathname);
+//
+  free(pathname);
 
   pthread_exit(NULL);
 
@@ -430,8 +441,6 @@ void* recursive(void * dir_args){
 
                 COUNTER++;
 
-//                recursive(pathname, column, output_directory, args);
-
 
             }else{
 
@@ -461,7 +470,7 @@ void* recursive(void * dir_args){
         perror("Couldn't open the directory");
     }
 
-    return "parent";
+    pthread_exit(NULL);
 
 }
 
@@ -668,6 +677,31 @@ int main(int argc, char* argv[]) {
     fclose(output);
 
 
+    for(i = 0; i < args->global_buffer[0]->array_length; i++){
+         free(internal_buffer[i]);
+    }
+
+    free(internal_buffer);
+
+
+
+    int global_array_length = args->global_buffer[0]->array_length;
+
+
+    for(i = 0; i < global_array_length; i++){
+
+        for(j= 0; j < 28; j++){
+
+            free(args->global_buffer[i]->fields[j]);
+        }
+
+        free(args->global_buffer[i]->fields);
+
+        free(args->global_buffer[i]);
+    }
+
+    free(args->global_buffer);
+
 //    for(i = 0; i < 28; i ++){
 //        free(header->fields[i]);
 //    }
@@ -678,32 +712,29 @@ int main(int argc, char* argv[]) {
     pthread_mutex_destroy(&lock);
 
 
-//    if(strcmp(state, "parent") == 0) {
+    i = 0;
 
-        i = 0;
+    printf("Initial PID: %d\n", getpid());
 
-        printf("Initial PID: %d\n", getpid());
+    printf("TIDS of all threads: ");
 
-        printf("TIDS of all threads: ");
+    while (TIDS[i] != 0) {
 
-        while (TIDS[i] != 0) {
+        printf(" %lu", (unsigned long) TIDS[i]);
 
-            printf(" %lu", (unsigned long) TIDS[i]);
-
-            if(TIDS[i+1] != 0){
-                printf(",");
-            }
-
-            i++;
-
+        if(TIDS[i+1] != 0){
+            printf(",");
         }
 
-        printf("\n");
+        i++;
 
-        printf("Total number of threads: %d\n", COUNTER);
+    }
+
+    printf("\n");
+
+    printf("Total number of threads: %d\n", COUNTER);
 
 
-//    }
 
     return 0;
 }
