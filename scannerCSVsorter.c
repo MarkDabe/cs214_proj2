@@ -76,7 +76,7 @@ int countlines (FILE *fin)
 //
 
 // add fields from a line in the opened file to an entry element in a the entry array
-int add_fields(entry* array_entry,int* fields_count,  char* line){
+int add_fields(entry* array_entry,int* fields_count,  char* line, int * mapper, int map){
 
     int i = 0;
     char* field = NULL;
@@ -102,30 +102,59 @@ int add_fields(entry* array_entry,int* fields_count,  char* line){
         sanitize_content(field);
 
         if(strcmp(field, "") == 0){
-            array_entry->fields[i] = malloc(sizeof("") + 1);
-            strncpy(array_entry->fields[i] ,"\0", sizeof("") + 1);
+            if(map == 1) {
+                array_entry->fields[mapper[i]] = malloc(sizeof("") + 1);
+                strncpy(array_entry->fields[mapper[i]], "\0", sizeof("") + 1);
+            }else{
+                array_entry->fields[i] = malloc(sizeof("") + 1);
+                strncpy(array_entry->fields[i], "\0", sizeof("") + 1);
+            }
         }
         else {
 
-            array_entry->fields[i] = (char *) malloc((strlen(field) + 1) * sizeof(char));
-            strncpy(array_entry->fields[i], field, strlen(field) + 1);
-            if(array_entry->fields[i][0] == '"'){
+            if(map == 1) {
 
-                size_t index = strlen(field);
-                size_t size = strlen(field) + 1;
+                array_entry->fields[mapper[i]] = (char *) malloc((strlen(field) + 1) * sizeof(char));
+                strncpy(array_entry->fields[mapper[i]], field, strlen(field) + 1);
+                if (array_entry->fields[i][0] == '"') {
 
-                while(field[strlen(field)-1] != '"') {
+                    size_t index = strlen(field);
+                    size_t size = strlen(field) + 1;
 
-                    field = strsep(&temp, ",");
+                    while (field[strlen(field) - 1] != '"') {
 
-                    size += strlen(field) + 1;
-                    array_entry->fields[i] = realloc(array_entry->fields[i], size);
-                    sprintf(array_entry->fields[i] + index, ",%s", field);
-                    index += strlen(field) + 1;
+                        field = strsep(&temp, ",");
+
+                        size += strlen(field) + 1;
+                        array_entry->fields[mapper[i]] = realloc(array_entry->fields[mapper[i]], size);
+                        sprintf(array_entry->fields[mapper[i]] + index, ",%s", field);
+                        index += strlen(field) + 1;
+
+                    }
+
 
                 }
+            }else{
+                array_entry->fields[i] = (char *) malloc((strlen(field) + 1) * sizeof(char));
+                strncpy(array_entry->fields[i], field, strlen(field) + 1);
+                if (array_entry->fields[i][0] == '"') {
+
+                    size_t index = strlen(field);
+                    size_t size = strlen(field) + 1;
+
+                    while (field[strlen(field) - 1] != '"') {
+
+                        field = strsep(&temp, ",");
+
+                        size += strlen(field) + 1;
+                        array_entry->fields[i] = realloc(array_entry->fields[i], size);
+                        sprintf(array_entry->fields[i] + index, ",%s", field);
+                        index += strlen(field) + 1;
+
+                    }
 
 
+                }
 
             }
         }
@@ -133,7 +162,22 @@ int add_fields(entry* array_entry,int* fields_count,  char* line){
         i++;
 
 
+    }
 
+    int j;
+
+    if(map == 1){
+        for(i=0; i < 28; i++){
+            for(j=0; j< 28; j++){
+                if(mapper[i] == j){
+                    break;
+                }
+            }
+            if(j == 28){
+                array_entry->fields[mapper[i]] = malloc(sizeof("") + 1);
+                strncpy(array_entry->fields[mapper[i]], "\0", sizeof("") + 1);
+            }
+        }
     }
 
 
@@ -155,6 +199,22 @@ int add_fields(entry* array_entry,int* fields_count,  char* line){
 
 // build the array of entries through opening a file in memory and counting the number of entries needed to build the array
 entry** load_array(int* entries_count, int* fields_count, char* filename){
+
+    const char *column_names[28] = {"color","director_name","num_critic_for_reviews","duration","director_facebook_likes"
+            ,"actor_3_facebook_likes","actor_2_name","actor_1_facebook_likes", "gross",
+                                    "genres","actor_1_name","movie_title","num_voted_users","cast_total_facebook_likes",
+                                    "actor_3_name","facenumber_in_poster","plot_keywords","movie_imdb_link","num_user_for_reviews",
+                                    "language","country","content_rating","budget","title_year","actor_2_facebook_likes",
+                                    "imdb_score","aspect_ratio","movie_facebook_likes"};
+
+    int* mapper = (int*) malloc(sizeof(int)*28);
+    int map = 0;
+
+    int x = 0;
+    for(x = 0; x <28; x++){
+        mapper[x] = -1;
+    }
+
 
     int i = 0;
     int status = 0;
@@ -188,7 +248,8 @@ entry** load_array(int* entries_count, int* fields_count, char* filename){
 
         buffer[i] = (entry*) malloc(sizeof(entry));
 
-        status = add_fields(buffer[i], fields_count,line_buffer);
+        status = add_fields(buffer[i], fields_count,line_buffer, mapper , map);
+
 
         if(status == -1){
             fclose(fptr);
@@ -197,9 +258,40 @@ entry** load_array(int* entries_count, int* fields_count, char* filename){
 
         }
 
+        if(i == 0){
+            int j;
+            int k;
+            for(k = 0; k < 28; k++){
+                for(j = 0; j < 28; j++){
+                    if(strncmp(buffer[0]->fields[k], column_names[j], strlen(column_names[j])) == 0){
+                        mapper[k] = j;
+                        break;
+                    }
+
+                }
+
+                if(j >= 28){
+
+
+                    fprintf(stderr, "INVALID COLUMN NAME IN FILE\n");
+
+                    free(buffer[0]);
+                    free(buffer);
+
+                    return NULL;
+
+
+                }
+
+
+            }
+
+            map = 1;
+        }
+
+
         i++;
     }
-
 
 
     fclose(fptr);
@@ -238,20 +330,20 @@ void * file_handler(void * args){
         pthread_exit(NULL);
     }
 
+    int i;
+
 
     pthread_mutex_lock(&lock);
 
-
-    printf("entries count: %d\n", entries_count);
 
 
     entry ** global_buffer = file_args->global_buffer;
 
     int array_length = global_buffer[0]->array_length;
 
-    printf("%d\n", array_length);
+    entry ** temp_global_buffer = (entry **) realloc(global_buffer,
+            (size_t) (array_length + entries_count - 1) * sizeof(entry));
 
-    entry ** temp_global_buffer = (entry **) realloc(global_buffer, (size_t) (array_length + entries_count - 1) * sizeof(entry));
 
 
     if(temp_global_buffer == NULL){
@@ -282,112 +374,14 @@ void * file_handler(void * args){
     pthread_mutex_unlock(&lock);
 
 
-    int i;
-
-    for(i = 0; i < entries_count - 2; i++){
+    for(i = 0; i < entries_count; i++){
 
         free(entries[i]);
 
     }
 
-    free(entries);
+  free(entries);
 
-
-
-
-//// determine if column to be sorted exists in fields
-//
-//
-//
-//    if(sorting_index == -1){
-//        fprintf(stderr, "INVALID COLUMN NAME\n");
-//        goto NAME_NOT_FOUND;
-//    }
-
-//
-
-//determine the type of entries to be sorted (numeric vs strings)
-//    int k ;
-//
-//    for(k=1; k < entries_count -1; k++){
-//
-//        if(strcmp(entries[k]->fields[sorting_index], "") == 0){
-//            continue;
-//        }
-//
-//
-//        int entry_length =  (int) strlen(entries[k]->fields[sorting_index]);
-//
-//        for(i = 0; i < entry_length; i++){
-//
-//
-//            if(!(isdigit(entries[k]->fields[sorting_index][i]))){
-//                merge_numeric = 0;
-//                break;
-//            }
-//        }
-//    }
-
-// call sort on the array
-//    sort(entries, internal_buffer, sorting_index, 1, entries_count - 2);
-//
-//    char ouptutilfe_path[512] = {0};
-//
-//
-//    rawfilename[strlen(rawfilename) - 4] = '\0';
-//
-//
-//
-//    sprintf(ouptutilfe_path, "%s/%s-sorted-%s.csv",output_directoy,rawfilename,column);
-//
-//    free(rawfilename);
-
-
-//    FILE * output = fopen(ouptutilfe_path, "w");
-
-// print the sorted array
-//    for(i = 0; i < entries_count ; i++) {
-//
-//        for(j= 0; j < fields_count ; j++){
-//
-//            fprintf(output, "%s", entries[i]->fields[j]);
-//            if(j == fields_count - 1){
-//                break;
-//            }
-//            fprintf(output, ",");
-//        }
-//
-//        fprintf(output, "\n");
-//
-//    }
-//    fclose(output);
-//
-
-// free memory
-//    for(i = 0; i < entries_count -1; i++){
-//        free(internal_buffer[i]);
-//    }
-//
-//    free(internal_buffer);
-//
-//
-// for(i = 0; i < entries_count - 2; i++){
-//
-//    for(j= 0; j < fields_count - 1; j++){
-//
-//        free(entries[i]->fields[j]);
-//    }
-//
-//    free(entries[i]->fields);
-//
-//    free(entries[i]);
-// }
-//
-//    free(entries);
-//
-//    free(instance_args);
-//
-//
   free(pathname);
 
   pthread_exit(NULL);
@@ -474,11 +468,55 @@ void* recursive(void * dir_args){
 
 }
 
+
+void set_options(char* flag, char* option, char* allowed_flags[], char* used_flags[], int * local_counter,
+                 char** column_name, char** input_directory, char** output_directory){
+    int x = 0;
+    int y = 0;
+
+    for(x = 0; x < 3; x++){
+        if(strcmp(flag, allowed_flags[x]) == 0){
+            while(used_flags[y] != NULL){
+                if(strcmp(used_flags[y], flag) == 0){
+                    *local_counter = -1;
+                    return;
+                }
+                y++;
+            }
+
+            if(strcmp(flag, "-c") == 0){
+                *column_name = option;
+            }else if(strcmp(flag, "-d") == 0){
+                *input_directory = option;
+            }else if(strcmp(flag, "-o") == 0){
+                *output_directory = option;
+            }
+
+            used_flags[*local_counter] = flag;
+            *local_counter +=1;
+            return;
+        }
+
+    }
+
+    if(x==3){
+        *local_counter = -1;
+        return;
+    }
+
+
+}
+
 int main(int argc, char* argv[]) {
 
 
+    char* column_name = NULL;
     char* input_directory = "./";
     char* output_directory = NULL;
+    char* allowed_flags[3] = {"-c", "-o", "-d"};
+    char* used_flags[3] = {0};
+    int local_counter  = 0;
+
 
     // check for the number of arguments
     if( argc < 3  || argc == 4 || argc == 6  || argc > 7){
@@ -487,72 +525,61 @@ int main(int argc, char* argv[]) {
     }
 //
 
-// check for flag -c in input
-    if(strcmp(argv[1], "-c") != 0){
+    if (argc >= 3){
+        set_options(argv[1], argv[2],allowed_flags, used_flags, &local_counter,
+                    &column_name,&input_directory,&output_directory);
+    }
+
+    if(local_counter == -1){
         fprintf(stderr, "INVALID COMMAND\n");
         return 0;
     }
-//
-    if( argc >= 5){
 
-        if(!(strcmp(argv[3], "-d") == 0 || strcmp(argv[3], "-o") == 0)){
-            fprintf(stderr, "INVALID COMMAND\n");
+    if (argc >= 5){
+        set_options(argv[3], argv[4],allowed_flags, used_flags, &local_counter,
+                    &column_name,&input_directory,&output_directory);
+    }
+
+    if(local_counter == -1){
+        fprintf(stderr, "INVALID COMMAND\n");
+        return 0;
+    }
+
+    if (argc == 7){
+        set_options(argv[5], argv[6],allowed_flags, used_flags, &local_counter,
+                    &column_name,&input_directory,&output_directory);
+    }
+
+    if(local_counter == -1){
+        fprintf(stderr, "INVALID COMMAND\n");
+        return 0;
+    }
+
+
+    if(column_name == NULL){
+        fprintf(stderr, "MISSING COLUMN NAME\n");
+        return 0;
+    }
+
+    DIR* dir = opendir(input_directory);
+    if (dir) {
+        closedir(dir);
+    }else{
+
+        fprintf(stderr, "INPUT DIRECTORY DOES NOT EXIST\n");
+        return 0;
+
+    }
+
+    if(output_directory != NULL) {
+        dir = opendir(output_directory);
+        if (dir) {
+            closedir(dir);
+        } else {
+            fprintf(stderr, "OUTPUT DIRECTORY DOES NOT EXIST\n");
             return 0;
-        }
-
-        if(strcmp(argv[3], "-d") == 0){
-
-            input_directory = argv[4];
-
-            DIR* dir = opendir(input_directory);
-            if (dir) {
-                closedir(dir);
-            }else{
-
-                fprintf(stderr, "INPUT DIRECTORY DOES NOT EXIST\n");
-                return 0;
-
-            }
-
-
-            if (argc > 5){
-
-                if(strcmp(argv[5], "-o") != 0){
-                    fprintf(stderr, "INVALID COMMAND\n");
-                    return 0;
-                }
-
-
-                output_directory = argv[6];
-
-
-                dir = opendir(output_directory);
-
-                if (dir) {
-                    closedir(dir);
-                }else {
-                    fprintf(stderr, "OUTPUT DIRECTORY DOES NOT EXIST\n");
-                    return 0;
-                }
-
-            }
-
-        }else if(strcmp(argv[3], "-o") == 0){
-
-            output_directory = argv[4];
-
-            DIR* dir = opendir(output_directory);
-            if (dir) {
-                closedir(dir);
-            }else{
-                fprintf(stderr, "OUTPUT DIRECTORY DOES NOT EXIST\n");
-                return 0;
-
-            }
 
         }
-
-
     }
 
 
@@ -570,6 +597,16 @@ int main(int argc, char* argv[]) {
                                     "language","country","content_rating","budget","title_year","actor_2_facebook_likes",
                                     "imdb_score","aspect_ratio","movie_facebook_likes"};
 
+    for(i = 0; i < 28; i ++){
+        if(strcmp(column_name, column_names[i]) == 0){
+            break;
+        }
+    }
+
+    if(i >= 28 ){
+        fprintf(stderr, "INVALID COLUMN NAME\n");
+        return 0;
+    }
 
     for(i = 0; i < 28; i ++){
         header->fields[i] = (char*) malloc(strlen(column_names[i]) + 1);
@@ -593,7 +630,7 @@ int main(int argc, char* argv[]) {
     dir_args->args = args;
     dir_args->input_directory = input_directory;
     dir_args->output_directory = output_directory;
-    dir_args->column = argv[2];
+    dir_args->column = column_name;
 
 
     pthread_create(&TIDS[COUNTER],NULL, recursive, dir_args);
@@ -626,7 +663,7 @@ int main(int argc, char* argv[]) {
 
 
     for(i = 0; i < 13; i++){
-        if(strcmp(string_array[i], argv[2]) == 0){
+        if(strcmp(string_array[i], column_name) == 0){
             merge_numeric = 0;
             break;
             }
@@ -634,7 +671,7 @@ int main(int argc, char* argv[]) {
 
     if(merge_numeric == -1) {
         for (i = 0; i < 15; i++) {
-            if (strcmp(numeric_array[i], argv[2]) == 0) {
+            if (strcmp(numeric_array[i], column_name) == 0) {
                 sorting_index = i;
                 break;
             }
@@ -702,13 +739,6 @@ int main(int argc, char* argv[]) {
 
     free(args->global_buffer);
 
-//    for(i = 0; i < 28; i ++){
-//        free(header->fields[i]);
-//    }
-
-//    free(header);
-//    free(global_buffer);
-//
     pthread_mutex_destroy(&lock);
 
 
