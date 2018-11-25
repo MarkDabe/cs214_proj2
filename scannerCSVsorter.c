@@ -695,7 +695,18 @@ int main(int argc, char* argv[]) {
 // call sort on the array
     sort(args->global_buffer, internal_buffer, sorting_index, 1, args->global_buffer[0]->array_length -1);
 
-    FILE * output = fopen("/Users/markhabashy/CLionProjects/untitled1/test/AllFiles-sorted.csv", "w");
+    size_t length_output_file_name = strlen("AllFiles-sorted.csv") + strlen(column_name) + 1;
+
+    char output_file_path[512] = {0};
+    char* output_file_name =  (char*)  malloc(length_output_file_name * sizeof(char));
+    sprintf(output_file_name,"/AllFiles-sorted-%s.csv", column_name);
+    if(output_directory != NULL){
+        strcat(output_file_path, output_directory);
+    }
+
+    strcat(output_file_path, output_file_name);
+
+    FILE * output = fopen(output_file_path, "w");
 
     for(i = 0; i < args->global_buffer[0]->array_length; i++) {
 
@@ -719,6 +730,7 @@ int main(int argc, char* argv[]) {
     }
 
     free(internal_buffer);
+    free(output_file_name);
 
 
 
