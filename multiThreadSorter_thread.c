@@ -416,6 +416,9 @@ void * file_handler(void * args){
 
 void* recursive(void * dir_args){
 
+    pthread_t local_tids[256] = {0};
+    int local_counter = 0;
+
     dir_handler_args * instance_dir_args = (dir_handler_args *) dir_args;
 
     const char* input_directory = instance_dir_args ->input_directory;
@@ -456,6 +459,9 @@ void* recursive(void * dir_args){
 
                 pthread_create(&TIDS[COUNTER],NULL, recursive, dir_args);
 
+                local_tids[local_counter] = TIDS[COUNTER];
+                local_counter++;
+
                 COUNTER++;
 
 
@@ -474,8 +480,9 @@ void* recursive(void * dir_args){
                         args_holder->pathname = path_name;
                         args_holder->args = args;
                         pthread_create(&TIDS[COUNTER],NULL, file_handler, args_holder);
-
-                       COUNTER++;
+                        local_tids[local_counter] = TIDS[COUNTER];
+                        local_counter++;
+                        COUNTER++;
                    }
                 }
             }
@@ -486,6 +493,30 @@ void* recursive(void * dir_args){
     else {
         perror("Couldn't open the directory");
     }
+
+
+    printf("Initial PID: %d\n", getpid());
+
+    printf("TIDS of all threads: ");
+
+    int i = 0;
+
+    while (local_tids[i] != 0) {
+
+        printf(" %lu", (unsigned long) local_tids[i]);
+
+        if(local_tids[i+1] != 0){
+            printf(",");
+        }
+
+        i++;
+
+    }
+
+    printf("\n");
+
+    printf("Total number of threads: %d\n", i - 1);
+
 
     pthread_exit(NULL);
 
