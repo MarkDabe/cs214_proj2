@@ -10,7 +10,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include "scannerCSVsorter.h"
+#include "multiThreadSorter_thread.h"
 
 pthread_t TIDS[256] = {0};
 pthread_mutex_t lock;
@@ -78,10 +78,12 @@ int countlines (FILE *fin)
 // add fields from a line in the opened file to an entry element in a the entry array
 int add_fields(entry* array_entry,int* fields_count,  char* line, int * mapper, int map){
 
+
     int i = 0;
     char* field = NULL;
 
     int linecounter = 0;
+
 
 
     if(*fields_count == -1){
@@ -93,7 +95,7 @@ int add_fields(entry* array_entry,int* fields_count,  char* line, int * mapper, 
     array_entry->length = strlen(line) + 1;
     char* temp = (char*) malloc(array_entry->length);
     strncpy(temp,line,array_entry->length);
-    array_entry->fields = (char**) malloc((*fields_count) * sizeof(char*));
+    array_entry->fields = (char**) malloc((28) * sizeof(char*));
 
     while ((field = strsep(&temp, ",")) != NULL) {
 
@@ -178,7 +180,20 @@ int add_fields(entry* array_entry,int* fields_count,  char* line, int * mapper, 
                 strncpy(array_entry->fields[mapper[i]], "\0", sizeof("") + 1);
             }
         }
+
+        for(i=0; i < 28; i++){
+            for(j=0; j< 28; j++){
+                if(mapper[i] == -1){
+                    array_entry->fields[i] = malloc(sizeof("") + 1);
+                    strncpy(array_entry->fields[i], "", sizeof(" ") + 1);
+                }
+            }
+
+        }
+
     }
+
+
 
 
     free(temp);
@@ -261,8 +276,17 @@ entry** load_array(int* entries_count, int* fields_count, char* filename){
         if(i == 0){
             int j;
             int k;
+
             for(k = 0; k < 28; k++){
+
+                if(strlen(buffer[0]->fields[k]) == 0){
+                    map = 1;
+                    break;
+                }
+
+
                 for(j = 0; j < 28; j++){
+
                     if(strncmp(buffer[0]->fields[k], column_names[j], strlen(column_names[j])) == 0){
                         mapper[k] = j;
                         break;
@@ -305,12 +329,11 @@ entry** load_array(int* entries_count, int* fields_count, char* filename){
 void * file_handler(void * args){
 
 
-//    printf("Initial PID: %d\n", getpid());
-//
-//    printf("TIDS of all threads: \n");
-//
-//    printf("Total number of threads: 0\n");
+    printf("Initial PID: %d\n", getpid());
 
+    printf("TIDS of all threads: \n");
+
+    printf("Total number of threads: 0\n");
 
 
     holder *instance_args = args;
