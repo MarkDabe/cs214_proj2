@@ -414,7 +414,7 @@ void * file_handler(void * args){
 
 
 
-void* recursive(void * dir_args){
+void* directory_handler(void * dir_args){
 
     pthread_t local_tids[256] = {0};
     int local_counter = 0;
@@ -457,7 +457,7 @@ void* recursive(void * dir_args){
                 instance_dir_args ->input_directory = temp_pathname;
 
 
-                pthread_create(&TIDS[COUNTER],NULL, recursive, dir_args);
+                pthread_create(&TIDS[COUNTER],NULL, directory_handler, dir_args);
 
                 local_tids[local_counter] = TIDS[COUNTER];
                 local_counter++;
@@ -687,7 +687,7 @@ int main(int argc, char* argv[]) {
     dir_args->column = column_name;
 
 
-    pthread_create(&TIDS[COUNTER],NULL, recursive, dir_args);
+    pthread_create(&TIDS[COUNTER],NULL, directory_handler, dir_args);
 
     COUNTER++;
 
